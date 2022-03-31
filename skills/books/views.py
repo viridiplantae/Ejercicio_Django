@@ -1,8 +1,11 @@
 from ast import Import
 from http.client import ImproperConnectionState
-import re
-from books.models import Author
-from books.models import Book
+from books.serializers import BookSerializer
+from books.models import Author, Book
+from books.serializers import AuthorSerializer, BookSerializer
+
+from django.shortcuts import get_object_or_404
+
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -14,38 +17,54 @@ class RetrieveBooks(APIView):
     permission_classes = (AllowAny,)
 
     def get(self, request):
-        books_list = Book.objects.all().values()
-        return Response(books_list, status=status.HTTP_200_OK)
+        books_list = Book.objects.all()
+        serializer = BookSerializer(books_list, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     
 class RetrieveAuthors(APIView):
     permission_classes = (AllowAny,)
 
     def get(self, request):
-        author_list = Author.objects.all().values()
-        return Response(author_list, status=status.HTTP_200_OK)
+        author_list = Author.objects.all()
+        serializer = AuthorSerializer(author_list, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     
 class CreateAuthor(APIView):
     permission_classes = (AllowAny,)
 
     def post(self, request):
-        author_obj = Author.objects.create(
-            first_name = request.data.get('first_name',''),
-            last_name = request.data.get('last_name',''),
-            birth_date = request.data.get('birth_date','')
-        )
-        return Response({'message':'Creado'}, status=status.HTTP_201_CREATED)
+        data = request.data
+        serializer = AuthorSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class CreateBook(APIView):
     permission_classes = (AllowAny,)
 
     def post(self, request):
-        book_obj = Book.objects.create(
-            name = request.data.get('name',''),
-            isbn = request.data.get('isbn',0),
-            publisher_date = request.data.get('publisher_date','1700-01-01'),
-            author_id =  request.data.get('author_id', 1)
-        )
-        return Response({'message':'Creado'}, status=status.HTTP_201_CREATED)
+        serializer = BookSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class RetrieveAuthorAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def get(self, request, author_id):
+        author_obj = get_object_or_404(Author, pk=author_id)
+        serializer = AuthorSerializer(author_obj)
+        return Response(serializer.data)
+
+
+class RetrieveBookAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def get(self, request, book_id):
+        book_obj = get_object_or_404(Book, pk=book_id)
+        serializer = BookSerializer(book_obj)
+        return Response(serializer.data)
